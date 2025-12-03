@@ -46,22 +46,26 @@ pipeline {
             }
         }
 
+        stage('Login to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-hub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )]) {
+                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                    }
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 sh '''
                 echo "🔧 Building Docker image..."
-                docker build -t $DOCKER_IMAGE .
+                docker build --pull -t $DOCKER_IMAGE .
                 '''
-            }
-        }
-
-        stage('Login to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'DOCKER_USERNAME', usernameVariable: 'DOCKER_PASSWORD')]) {
-                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
-                    }
-                }
             }
         }
 
@@ -74,14 +78,15 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Deploy to MicroK8s') {
             steps {
                 sh '''
                 echo "🚀 Deploying to Kubernetes..."
-                microk8s.kubectl apply -f $DEPLOY_FILE
+                microk8s status --wait-ready
+                microk8s kubectl apply -f $DEPLOY_FILE
                 echo "Waiting for pods to stabilize..."
                 sleep 20
-                microk8s.kubectl get pods
+                microk8s kubectl get pods -A
                 '''
             }
         }
@@ -90,10 +95,10 @@ pipeline {
             steps {
                 sh '''
                 echo "🌐 Applying Ingress for domain $DOMAIN ..."
-                microk8s.kubectl apply -f $DEPLOY_FILE
+                microk8s kubectl apply -f $DEPLOY_FILE
                 echo "Waiting for ingress to be ready..."
                 sleep 20
-                microk8s.kubectl get ingress
+                microk8s kubectl get ingress
                 echo "🔍 Verifying application availability..."
                 curl -I http://$DOMAIN || echo "⚠️ Could not verify via curl, please check browser."
                 echo "✅ Deployment complete! Access: http://$DOMAIN"
@@ -114,7 +119,3 @@ pipeline {
         }
     }
 }
-
-
-
-
