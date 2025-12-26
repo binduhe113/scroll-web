@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'binduhe113/test-dev:latest'
         DEPLOY_FILE  = 'deploy.yaml'
-        DOMAIN       = 'scrollweb.duckdns.org'
+        DOMAIN       = 'degree123.duckdns.org'
     }
 
     stages {
@@ -119,3 +119,4 @@ pipeline {
         }
     }
 }
+
